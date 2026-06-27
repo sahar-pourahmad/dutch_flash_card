@@ -1,3 +1,67 @@
+import { useNavigate } from 'react-router-dom';
+import Flashcard from './Flashcard';
+import { useReviewQueue } from '../hooks/useReviewQueue';
+
 export default function ReviewSession() {
-  return <div>ReviewSession placeholder</div>
+  const navigate = useNavigate();
+  const { currentWord, remaining, sessionCount, done, loading, rate } = useReviewQueue();
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ color: 'var(--text-muted)' }}>Loading cards...</div>
+      </div>
+    );
+  }
+
+  if (done) {
+    return (
+      <div style={{ paddingTop: 64, textAlign: 'center' }}>
+        <div style={{ fontSize: '3rem', marginBottom: 16 }}>✓</div>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>Session complete!</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: 32 }}>
+          You reviewed {sessionCount} card{sessionCount !== 1 ? 's' : ''}.
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          style={{ background: 'var(--accent)', color: '#fff', fontWeight: 600, padding: '14px 32px' }}
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ paddingTop: 24, paddingBottom: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <button
+          onClick={() => navigate('/')}
+          style={{ background: 'none', color: 'var(--text-muted)', padding: '8px 0', fontSize: '0.9rem' }}
+        >
+          ← Back
+        </button>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          {remaining} remaining
+        </div>
+      </div>
+
+      <div style={{
+        height: 4,
+        background: 'var(--surface2)',
+        borderRadius: 2,
+        marginBottom: 24,
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          height: '100%',
+          background: 'var(--accent)',
+          width: `${sessionCount > 0 ? ((sessionCount / (sessionCount + remaining)) * 100) : 0}%`,
+          transition: 'width 0.4s ease',
+        }} />
+      </div>
+
+      <Flashcard word={currentWord} onRate={rate} />
+    </div>
+  );
 }
