@@ -21,46 +21,53 @@ export function useReviewQueue() {
   const ratingInFlight = useRef(false);
 
   useEffect(() => {
+    let isMounted = true;
     async function load() {
       try {
         const [words, allProgress] = await Promise.all([getWords(), getAllProgress()]);
         const map = Object.fromEntries(allProgress.map(p => [p.id, p]));
         const due = words.filter(w => isDue(map[w.id] ?? {}));
+        if (!isMounted) return;
         setQueue(shuffleArray(due));
         setProgressMap(map);
       } catch (e) {
+        if (!isMounted) return;
         setError(e.message);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
     load();
+    return () => { isMounted = false; };
   }, []);
 
   const rate = useCallback(async (quality) => {
     if (ratingInFlight.current) return;
     ratingInFlight.current = true;
-    const word = queue[currentIndex];
-    if (!word) return;
-    const current = progressMap[word.id] ?? {};
-    const updated = { id: word.id, ...nextReview(current, quality) };
-    await saveProgress(updated);
-    setProgressMap(prev => ({ ...prev, [word.id]: updated }));
-    setSessionCount(c => c + 1);
+    try {
+      const word = queue[currentIndex];
+      if (!word) return;
+      const current = progressMap[word.id] ?? {};
+      const updated = { id: word.id, ...nextReview(current, quality) };
+      await saveProgress(updated);
+      setProgressMap(prev => ({ ...prev, [word.id]: updated }));
+      setSessionCount(c => c + 1);
 
-    // Update streak
-    const today = new Date().toDateString();
-    const lastStudy = await getMeta('lastStudyDate');
-    if (lastStudy !== today) {
-      const yesterday = new Date(Date.now() - 86400000).toDateString();
-      const storedStreak = (await getMeta('streak')) ?? 0;
-      const newStreak = lastStudy === yesterday ? storedStreak + 1 : 1;
-      await setMeta('streak', newStreak);
-      await setMeta('lastStudyDate', today);
+      // Update streak
+      const today = new Date().toDateString();
+      const lastStudy = await getMeta('lastStudyDate');
+      if (lastStudy !== today) {
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        const storedStreak = (await getMeta('streak')) ?? 0;
+        const newStreak = lastStudy === yesterday ? storedStreak + 1 : 1;
+        await setMeta('streak', newStreak);
+        await setMeta('lastStudyDate', today);
+      }
+
+      setCurrentIndex(i => i + 1);
+    } finally {
+      ratingInFlight.current = false;
     }
-
-    setCurrentIndex(i => i + 1);
-    ratingInFlight.current = false;
   }, [queue, currentIndex, progressMap]);
 
   const currentWord = queue[currentIndex] ?? null;
