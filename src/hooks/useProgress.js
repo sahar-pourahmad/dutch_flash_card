@@ -54,16 +54,20 @@ export function useProgress() {
   }, [loadFromDB]);
 
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
     loadFromDB()
       .then(cached => {
+        if (!isMounted) return;
         setLoading(false);
         if (cached.length === 0) return sync();
       })
       .catch(e => {
+        if (!isMounted) return;
         setError(e.message);
         setLoading(false);
       });
+    return () => { isMounted = false; };
   }, [loadFromDB, sync]);
 
   const dueCount = words.filter(w => isDue(progressMap[w.id] ?? {})).length;
