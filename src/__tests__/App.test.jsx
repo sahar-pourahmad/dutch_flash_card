@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import App from '../App.jsx'
@@ -6,13 +7,13 @@ describe('App routing', () => {
   it('renders Dashboard at /', () => {
     window.history.pushState({}, '', '/')
     render(<App />)
-    expect(screen.getByText(/Dashboard placeholder/i)).toBeInTheDocument()
+    expect(screen.getByText('Dutch Words')).toBeInTheDocument()
   })
 
   it('renders ReviewSession at /review', () => {
     window.history.pushState({}, '', '/review')
     render(<App />)
-    expect(screen.getByText(/ReviewSession placeholder/i)).toBeInTheDocument()
+    expect(screen.getByText('Loading cards...')).toBeInTheDocument()
   })
 })
 
