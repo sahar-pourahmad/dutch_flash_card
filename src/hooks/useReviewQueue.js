@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getWords, getAllProgress, saveProgress, getMeta, setMeta } from '../lib/db';
 import { isDue, nextReview } from '../lib/sm2';
 
@@ -17,20 +17,29 @@ export function useReviewQueue() {
   const [progressMap, setProgressMap] = useState({});
   const [sessionCount, setSessionCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const ratingInFlight = useRef(false);
 
   useEffect(() => {
     async function load() {
-      const [words, allProgress] = await Promise.all([getWords(), getAllProgress()]);
-      const map = Object.fromEntries(allProgress.map(p => [p.id, p]));
-      const due = words.filter(w => isDue(map[w.id] ?? {}));
-      setQueue(shuffleArray(due));
-      setProgressMap(map);
-      setLoading(false);
+      try {
+        const [words, allProgress] = await Promise.all([getWords(), getAllProgress()]);
+        const map = Object.fromEntries(allProgress.map(p => [p.id, p]));
+        const due = words.filter(w => isDue(map[w.id] ?? {}));
+        setQueue(shuffleArray(due));
+        setProgressMap(map);
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, []);
 
   const rate = useCallback(async (quality) => {
+    if (ratingInFlight.current) return;
+    ratingInFlight.current = true;
     const word = queue[currentIndex];
     if (!word) return;
     const current = progressMap[word.id] ?? {};
@@ -51,11 +60,12 @@ export function useReviewQueue() {
     }
 
     setCurrentIndex(i => i + 1);
+    ratingInFlight.current = false;
   }, [queue, currentIndex, progressMap]);
 
   const currentWord = queue[currentIndex] ?? null;
   const remaining = queue.length - currentIndex;
   const done = !loading && currentIndex >= queue.length;
 
-  return { currentWord, remaining, sessionCount, done, loading, rate };
+  return { currentWord, remaining, sessionCount, done, loading, error, rate };
 }
